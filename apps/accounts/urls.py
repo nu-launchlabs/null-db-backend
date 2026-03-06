@@ -1,4 +1,5 @@
 from django.urls import path
+from apps.accounts.views import SubmitGIView, ViewGIView
 
 from apps.accounts.views import (
     AdminChangeRoleView,
@@ -25,4 +26,10 @@ urlpatterns = [
     path("launch-team/", AdminCreateLaunchTeamView.as_view(), name="create-launch-team"),
     path("users/", AdminUserListView.as_view(), name="user-list"),
     path("users/<int:user_id>/role/", AdminChangeRoleView.as_view(), name="change-role"),
+    
+    # General Interest (Phase 2)
+    # POST /api/v1/auth/general-interest/  Submit GI (Student)
+    # GET  /api/v1/auth/general-interest/  View own GI (Authenticated)
+    path("general-interest/", SubmitGIView.as_view(), name="submit-gi"),
+    path("general-interest/me/", ViewGIView.as_view(), name="view-gi"),
 ]
