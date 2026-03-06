@@ -166,9 +166,13 @@ python manage.py migrate
 
 Expected output:
 ```
-Migrations for 'accounts':
-  apps\accounts\migrations\0001_initial.py
-    - Create model User
+   Migrations for 'accounts':
+     apps/accounts/migrations/0001_initial.py
+     apps/accounts/migrations/0002_generalinterest.py
+   Migrations for 'cycles':
+     apps/cycles/migrations/0001_initial.py
+   Migrations for 'audit':
+     apps/audit/migrations/0001_initial.py
 
 Operations to perform:
   Apply all migrations: accounts, admin, auth, contenttypes, sessions
@@ -242,7 +246,7 @@ pytest --cov=apps --cov-report=term-missing -v
 pytest apps/accounts/tests/test_auth.py::TestRegistration -v
 ```
 
-Expected: **31 passed, 0 failed**
+Expected: **90+ passed, 0 failed**
 
 ---
 

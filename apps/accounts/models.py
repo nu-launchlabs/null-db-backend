@@ -25,7 +25,6 @@ class User(AbstractUser, TimestampMixin):
 
     class Role(models.TextChoices):
 
-
         ADMIN = "ADMIN", "Admin"
         OPS_CHAIR = "OPS_CHAIR", "Operations Chair"
         USER = "USER", "User"
@@ -92,3 +91,66 @@ class User(AbstractUser, TimestampMixin):
     def is_student(self):
         """USER role = Northeastern student."""
         return self.role == self.Role.USER
+
+
+# General Interest Model (Phase 2)
+
+
+class GeneralInterest(TimestampMixin, models.Model):
+    """
+    General Interest form submission.
+
+    Each student submits one GI per cycle. Completing GI is required
+    before applying to Launch or Innovation tracks.
+
+    Business rules:
+        - Only USER role can submit
+        - Submitting sets user.is_gi_complete = True
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="general_interests",
+    )
+    cycle = models.ForeignKey(
+        "cycles.ApplicationCycle",
+        on_delete=models.CASCADE,
+        related_name="general_interests",
+    )
+    graduation_year = models.IntegerField(
+        help_text="Expected graduation year, e.g. 2027",
+    )
+    college = models.CharField(
+        max_length=200,
+        help_text='College within NEU, e.g. "Khoury College of Computer Sciences"',
+    )
+    major = models.CharField(
+        max_length=200,
+        help_text='Major/program, e.g. "Computer Science"',
+    )
+    skills = models.TextField(
+        help_text="Technical and non-technical skills (free text).",
+    )
+    interest_areas = models.TextField(
+        help_text="Areas of interest: product, engineering, design, marketing, etc.",
+    )
+    why_join = models.TextField(
+        help_text="Why do you want to join NU Launch Labs?",
+    )
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "general_interests"
+        ordering = ["-submitted_at"]
+        verbose_name = "General Interest"
+        verbose_name_plural = "General Interests"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "cycle"],
+                name="unique_gi_per_user_per_cycle",
+            ),
+        ]
+
+    def __str__(self):
+        return f"GI: {self.user.email} — {self.cycle.name}"

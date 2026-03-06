@@ -1,13 +1,13 @@
 """
-Django Admin configuration for User model.
+Django Admin configuration for User and GeneralInterest models.
 
-This gives you a web UI at /admin/ for managing users directly.
+This gives you a web UI at /admin/ for managing users and GI submissions.
 """
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from apps.accounts.models import User
+from apps.accounts.models import GeneralInterest, User
 
 
 @admin.register(User)
@@ -74,3 +74,41 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
     )
+
+
+@admin.register(GeneralInterest)
+class GeneralInterestAdmin(admin.ModelAdmin):
+    list_display = [
+        "user_email",
+        "cycle_name",
+        "graduation_year",
+        "college",
+        "major",
+        "submitted_at",
+    ]
+    list_filter = ["cycle", "graduation_year", "college"]
+    search_fields = ["user__email", "user__first_name", "user__last_name", "major"]
+    readonly_fields = [
+        "user",
+        "cycle",
+        "graduation_year",
+        "college",
+        "major",
+        "skills",
+        "interest_areas",
+        "why_join",
+        "submitted_at",
+        "created_at",
+        "updated_at",
+    ]
+    ordering = ["-submitted_at"]
+
+    def user_email(self, obj):
+        return obj.user.email
+
+    user_email.short_description = "Student"
+
+    def cycle_name(self, obj):
+        return obj.cycle.name
+
+    cycle_name.short_description = "Cycle"

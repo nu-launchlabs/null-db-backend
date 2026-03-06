@@ -7,15 +7,19 @@ Each serializer handles:
     - No business logic lives here
 """
 
+import datetime
+
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from apps.accounts.models import User
+from apps.accounts.models import GeneralInterest, User
 from apps.accounts.validators import validate_neu_email
 
 
 # Auth Serializers
+
+
 class RegisterSerializer(serializers.Serializer):
     """
     Only NEU emails allowed for self-registration.
@@ -55,7 +59,6 @@ class LaunchTeamCreateSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8)
     first_name = serializers.CharField(max_length=150)
     last_name = serializers.CharField(max_length=150)
-    # Optional: admin can set a temp password, team member resets later
 
     def validate_email(self, value):
         email = value.lower().strip()
@@ -71,7 +74,6 @@ class LaunchTeamCreateSerializer(serializers.Serializer):
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
     Extends JWT token to include role and user info in the response.
-
     """
 
     @classmethod
@@ -91,6 +93,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 # Profile Serializers
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
     """
     Read-only representation of the user.
@@ -146,6 +150,8 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 # Admin Serializers
+
+
 class ChangeRoleSerializer(serializers.Serializer):
     """Input for admin changing a user's role."""
 
@@ -173,5 +179,71 @@ class UserListSerializer(serializers.ModelSerializer):
             "is_neu_email",
             "is_active",
             "created_at",
+        ]
+        read_only_fields = fields
+
+
+# General Interest Serializers (Phase 2)
+
+
+class SubmitGISerializer(serializers.Serializer):
+    """Input DTO for submitting General Interest form."""
+
+    graduation_year = serializers.IntegerField(
+        min_value=2024,
+        max_value=2035,
+        help_text="Expected graduation year",
+    )
+    college = serializers.CharField(
+        max_length=200,
+        help_text='College within NEU, e.g. "Khoury College of Computer Sciences"',
+    )
+    major = serializers.CharField(
+        max_length=200,
+        help_text='Major/program, e.g. "Computer Science"',
+    )
+    skills = serializers.CharField(
+        help_text="Technical and non-technical skills",
+    )
+    interest_areas = serializers.CharField(
+        help_text="Areas of interest: product, engineering, design, marketing, etc.",
+    )
+    why_join = serializers.CharField(
+        help_text="Why do you want to join NU Launch Labs?",
+    )
+
+    def validate_graduation_year(self, value):
+        """Ensure graduation year is reasonable."""
+        current_year = datetime.date.today().year
+        if value < current_year:
+            raise serializers.ValidationError(
+                "Graduation year cannot be in the past."
+            )
+        return value
+
+
+class GIDetailSerializer(serializers.ModelSerializer):
+    """Output DTO for GI submission details."""
+
+    user_email = serializers.CharField(source="user.email", read_only=True)
+    user_name = serializers.CharField(source="user.full_name", read_only=True)
+    cycle_name = serializers.CharField(source="cycle.name", read_only=True)
+
+    class Meta:
+        model = GeneralInterest
+        fields = [
+            "id",
+            "user",
+            "user_email",
+            "user_name",
+            "cycle",
+            "cycle_name",
+            "graduation_year",
+            "college",
+            "major",
+            "skills",
+            "interest_areas",
+            "why_join",
+            "submitted_at",
         ]
         read_only_fields = fields

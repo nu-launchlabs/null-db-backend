@@ -37,24 +37,46 @@ Backend API for the NU Launch Labs application cycle management platform. Manage
 - [x] User listing with role filtering and name/email search
 - [x] Profile viewing and editing (own profile only)
 
+### Phase 2: Cycle Management + General Interest + Audit ✅
+
+#### Application Cycles
+- [x] Semester-level cycle container (e.g. "Fall 2026")
+- [x] Two independent track toggles: `launch_open` and `innovation_open`
+- [x] Admin can open/close each track independently at any time
+- [x] Both tracks can run simultaneously
+- [x] Cycle close operation (one-way, deactivates cycle)
+- [x] Cycle statistics dashboard
+
+#### General Interest Form
+- [x] Students submit GI form anytime during active cycle (not phase-gated)
+- [x] Upsert pattern: resubmitting updates existing form (always editable)
+- [x] Completing GI sets `is_gi_complete` flag for downstream permissions
+- [x] One GI per user per cycle (DB constraint)
+
+#### Audit Logging
+- [x] Immutable, append-only audit trail
+- [x] Every service method logs to AuditService
+- [x] Tracks actor, action, target, metadata, and IP address
+- [x] Filterable audit log viewer (Admin/Ops Chair)
+- [x] Retroactively wired into all Phase 1 endpoints
+
 #### Infrastructure
 - [x] PostgreSQL 16 via Docker
 - [x] Swagger UI + ReDoc API documentation
 - [x] Custom exception handler (consistent error format)
 - [x] CORS configured for Next.js frontend
-- [x] 31 automated tests with pytest
-
+- [x] 90+ automated tests with pytest
 
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology | 
+| Layer | Technology |
 |-------|-----------|
-| **Framework** | Django 5.1 | 
-| **API Layer** | Django REST Framework 3.15 | 
+| **Framework** | Django 5.1 |
+| **API Layer** | Django REST Framework 3.15 |
 | **Database** | PostgreSQL 16 |
 | **Auth** | SimpleJWT |
-| **API Docs** | drf-spectacular | 
+| **API Docs** | drf-spectacular |
 | **Testing** | pytest + factory-boy |
 | **Container** | Docker + docker-compose |
 
@@ -71,7 +93,9 @@ Backend API for the NU Launch Labs application cycle management platform. Manage
 │                   Django + DRF Application                  │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│                        accounts                             │
+│   accounts  │  cycles  │  launch  │  innovation  │  audit   │
+│             │          │          │              │          │
+│             │          │          │              │          │
 ├─────────────────────────────────────────────────────────────┤
 │                    Service Layer                            │
 │         (All business logic, validation, rules)             │
@@ -185,7 +209,7 @@ python manage.py runserver
 
 ## 📚 API Documentation
 
-### Authentication
+### Authentication (Phase 1)
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
@@ -195,9 +219,33 @@ python manage.py runserver
 | GET | `/api/v1/auth/me/` | Any | Get own profile |
 | PATCH | `/api/v1/auth/me/` | Any | Update own profile |
 | POST | `/api/v1/auth/change-password/` | Any | Change own password |
-| POST | `/api/v1/auth/launch-team/` | ADMIN | Create Launch Team account |
-| GET | `/api/v1/auth/users/` | ADMIN, OPS_CHAIR | List all users |
-| PATCH | `/api/v1/auth/users/{id}/role/` | ADMIN | Change user role |
+| POST | `/api/v1/auth/launch-team/` | Admin | Create Launch Team account |
+| GET | `/api/v1/auth/users/` | Admin, Ops | List all users |
+| PATCH | `/api/v1/auth/users/{id}/role/` | Admin | Change user role |
+
+### Application Cycles (Phase 2)
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/v1/cycles/` | Admin | Create new cycle |
+| GET | `/api/v1/cycles/list/` | Admin, Ops | List all cycles |
+| GET | `/api/v1/cycles/current/` | Any | Get active cycle |
+| PATCH | `/api/v1/cycles/{id}/toggles/` | Admin | Update track toggles |
+| POST | `/api/v1/cycles/{id}/close/` | Admin | Close cycle (permanent) |
+| GET | `/api/v1/cycles/{id}/stats/` | Admin, Ops | Cycle statistics |
+
+### General Interest (Phase 2)
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/v1/auth/general-interest/` | Student | Submit or update GI form |
+| GET | `/api/v1/auth/general-interest/me/` | Any | View own GI submission |
+
+### Audit (Phase 2)
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/v1/audit/logs/` | Admin, Ops | View audit trail |
 
 ### Error Response Format
 
@@ -223,28 +271,49 @@ nu-launch-labs/
 │   ├── wsgi.py
 │   └── asgi.py
 ├── apps/
-│   ├── accounts/              # Users, auth, registration, roles
-│   │   ├── models.py          # User model with role enum
+│   ├── accounts/              # Users, auth, registration, roles, GI
+│   │   ├── models.py          # User model + GeneralInterest model
 │   │   ├── managers.py        # Custom UserManager (email-based)
-│   │   ├── serializers.py     # DTOs (register, login, profile, etc.)
-│   │   ├── services.py        # Business logic (register, role change, etc.)
+│   │   ├── serializers.py     # DTOs (register, login, profile, GI, etc.)
+│   │   ├── services.py        # Business logic (register, GI upsert, etc.)
 │   │   ├── views.py           # Thin controllers
 │   │   ├── urls.py            # Route mapping
 │   │   ├── permissions.py     # IsAdmin, IsOpsChair, IsGIComplete, etc.
 │   │   ├── validators.py      # NEU email domain validation
 │   │   ├── admin.py           # Django Admin configuration
 │   │   └── tests/
-│   │       └── test_auth.py   # 31 tests
-│   ├── cycles/                # Application cycles (Phase 2)
+│   │       ├── test_auth.py   # Auth tests (31)
+│   │       └── test_gi.py     # GI tests (20+)
+│   ├── cycles/                # Application cycle management
+│   │   ├── models.py          # ApplicationCycle with independent toggles
+│   │   ├── serializers.py     # Cycle DTOs
+│   │   ├── services.py        # Cycle lifecycle, toggle management
+│   │   ├── views.py           # Cycle endpoints
+│   │   ├── urls.py            # Route mapping
+│   │   ├── admin.py           # Django Admin configuration
+│   │   └── tests/
+│   │       └── test_cycles.py # Cycle tests (30+)
 │   ├── launch/                # Launch track (Phase 3)
 │   ├── innovation/            # Innovation track (Phase 4)
-│   ├── audit/                 # Audit logging (Phase 2)
+│   ├── audit/                 # Audit logging
+│   │   ├── models.py          # AuditLog model (immutable)
+│   │   ├── serializers.py     # Audit DTOs
+│   │   ├── services.py        # AuditService.log()
+│   │   ├── views.py           # Audit log viewer
+│   │   ├── urls.py            # Route mapping
+│   │   ├── admin.py           # Django Admin (read-only)
+│   │   └── tests/
+│   │       └── test_audit.py  # Audit tests (15+)
 │   └── notifications/         # Email system (Phase 5)
 ├── utils/
 │   ├── exceptions.py          # Custom exceptions + error handler
 │   ├── pagination.py          # Standard pagination config
 │   ├── mixins.py              # TimestampMixin (created_at, updated_at)
 │   └── constants.py           # NEU_EMAIL_DOMAINS, etc.
+├── docs/
+│   ├── API.md                 # Detailed API documentation
+│   ├── DATABASE_SCHEMA.md     # Full database schema
+│   └── SETUP.md               # Development setup guide
 ├── requirements/
 │   ├── base.txt               # Production dependencies
 │   ├── dev.txt                # Dev tools (pytest, ruff, etc.)
@@ -275,6 +344,9 @@ pytest --cov=apps --cov-report=term-missing -v
 
 # Specific test class
 pytest apps/accounts/tests/test_auth.py::TestRegistration -v
+
+# Phase 2 tests only
+pytest apps/cycles/tests/ apps/audit/tests/ apps/accounts/tests/test_gi.py -v
 ```
 
 ## 🔧 Environment Variables
