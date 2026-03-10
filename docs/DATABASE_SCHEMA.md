@@ -258,7 +258,6 @@ CREATE TABLE launch_candidates (
     id               BIGSERIAL PRIMARY KEY,
     application_id   BIGINT NOT NULL REFERENCES launch_applications(id) ON DELETE CASCADE,
     project_id       BIGINT NOT NULL REFERENCES launch_projects(id) ON DELETE CASCADE,
-    sent_by_id       BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     status           VARCHAR(20) NOT NULL DEFAULT 'PENDING_REVIEW',
     sent_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     selected_at      TIMESTAMPTZ,
