@@ -19,7 +19,7 @@ api_v1_patterns = [
     path("auth/", include("apps.accounts.urls")),
     path("cycles/", include("apps.cycles.urls")),           # Phase 2
     path("audit/", include("apps.audit.urls")),             # Phase 2
-    # path("launch/", include("apps.launch.urls")),         # Phase 3
+    path("launch/", include("apps.launch.urls")),         # Phase 3
     # path("innovation/", include("apps.innovation.urls")), # Phase 4
 ]
 

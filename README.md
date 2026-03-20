@@ -60,12 +60,44 @@ Backend API for the NU Launch Labs application cycle management platform. Manage
 - [x] Filterable audit log viewer (Admin/Ops Chair)
 - [x] Retroactively wired into all Phase 1 endpoints
 
+### Phase 3: Launch Track ✅
+
+#### Launch Projects
+- [x] Admin creates projects linked to LAUNCH_TEAM users + active cycle
+- [x] Projects can be created or deleted anytime (not toggle-gated)
+- [x] Delete blocked if selected candidates exist
+- [x] Project listing and detail views for all authenticated users
+
+#### Student Applications
+- [x] Students apply when `launch_open=True` and GI is complete
+- [x] One application per student per project per cycle (DB constraint)
+- [x] Applications blocked if student is already assigned this cycle
+- [x] Students can view their own applications
+
+#### Admin/Ops Filtering & Candidate Management
+- [x] Bulk filter applications (SUBMITTED → FILTERED)
+- [x] Send filtered applications to Launch Team (FILTERED → SENT_TO_TEAM)
+- [x] View applicants per project with status filtering
+- [x] Status-based workflow: SUBMITTED → FILTERED → SENT_TO_TEAM → SELECTED/NOT_SELECTED
+
+#### Launch Team Selection
+- [x] Launch Team views only candidates for their own projects
+- [x] Select candidate → auto-creates Assignment (track=LAUNCH)
+- [x] Reject candidate → status REJECTED, app status NOT_SELECTED
+- [x] Conflict detection: blocks if student already has Launch assignment
+- [x] Launch priority: replaces Innovation assignment with warning
+
+#### Assignments
+- [x] Assignment model — single source of truth for student-project mapping
+- [x] `UNIQUE(user, cycle)` — one project per student per semester
+- [x] Assigned students locked out of further applications
+
 #### Infrastructure
 - [x] PostgreSQL 16 via Docker
 - [x] Swagger UI + ReDoc API documentation
 - [x] Custom exception handler (consistent error format)
 - [x] CORS configured for Next.js frontend
-- [x] 90+ automated tests with pytest
+- [x] 138 automated tests with pytest
 
 
 ## 🛠️ Tech Stack
@@ -209,7 +241,7 @@ python manage.py runserver
 
 ## 📚 API Documentation
 
-### Authentication (Phase 1)
+### Authentication (Phase 1) — 9 endpoints
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
@@ -223,7 +255,7 @@ python manage.py runserver
 | GET | `/api/v1/auth/users/` | Admin, Ops | List all users |
 | PATCH | `/api/v1/auth/users/{id}/role/` | Admin | Change user role |
 
-### Application Cycles (Phase 2)
+### Application Cycles (Phase 2) — 6 endpoints
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
@@ -234,18 +266,35 @@ python manage.py runserver
 | POST | `/api/v1/cycles/{id}/close/` | Admin | Close cycle (permanent) |
 | GET | `/api/v1/cycles/{id}/stats/` | Admin, Ops | Cycle statistics |
 
-### General Interest (Phase 2)
+### General Interest (Phase 2) — 2 endpoints
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | POST | `/api/v1/auth/general-interest/` | Student | Submit or update GI form |
 | GET | `/api/v1/auth/general-interest/me/` | Any | View own GI submission |
 
-### Audit (Phase 2)
+### Audit (Phase 2) — 1 endpoint
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/api/v1/audit/logs/` | Admin, Ops | View audit trail |
+
+### Launch Track (Phase 3) — 12 endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/v1/launch/projects/` | Admin | Create Launch Project |
+| GET | `/api/v1/launch/projects/list/` | Any | List projects for active cycle |
+| GET | `/api/v1/launch/projects/{id}/` | Any | Project detail |
+| DELETE | `/api/v1/launch/projects/{id}/` | Admin | Delete project |
+| POST | `/api/v1/launch/projects/{id}/apply/` | Student (GI done) | Apply to project |
+| GET | `/api/v1/launch/projects/{id}/applicants/` | Admin, Ops | View applicants |
+| POST | `/api/v1/launch/applications/filter/` | Admin, Ops | Bulk filter applications |
+| POST | `/api/v1/launch/applications/send-to-team/` | Admin, Ops | Send candidates to team |
+| GET | `/api/v1/launch/my-applications/` | Student | View own applications |
+| GET | `/api/v1/launch/candidates/` | Launch Team | View candidates for own projects |
+| POST | `/api/v1/launch/candidates/{id}/select/` | Launch Team | Select → auto-assign |
+| POST | `/api/v1/launch/candidates/{id}/reject/` | Launch Team | Reject candidate |
 
 ### Error Response Format
 
@@ -283,17 +332,26 @@ nu-launch-labs/
 │   │   ├── admin.py           # Django Admin configuration
 │   │   └── tests/
 │   │       ├── test_auth.py   # Auth tests (31)
-│   │       └── test_gi.py     # GI tests (20+)
-│   ├── cycles/                # Application cycle management
-│   │   ├── models.py          # ApplicationCycle with independent toggles
+│   │       └── test_gi.py     # GI tests (24)
+│   ├── cycles/                # Application cycle management + assignments
+│   │   ├── models.py          # ApplicationCycle + Assignment
 │   │   ├── serializers.py     # Cycle DTOs
 │   │   ├── services.py        # Cycle lifecycle, toggle management
 │   │   ├── views.py           # Cycle endpoints
 │   │   ├── urls.py            # Route mapping
-│   │   ├── admin.py           # Django Admin configuration
+│   │   ├── admin.py           # Django Admin for cycles + assignments
 │   │   └── tests/
-│   │       └── test_cycles.py # Cycle tests (30+)
-│   ├── launch/                # Launch track (Phase 3)
+│   │       └── test_cycles.py # Cycle tests (30)
+│   ├── launch/                # Launch track
+│   │   ├── models.py          # LaunchProject, LaunchApplication, LaunchCandidate
+│   │   ├── serializers.py     # Launch input/output DTOs
+│   │   ├── services.py        # Full Launch workflow logic
+│   │   ├── views.py           # 12 Launch endpoints
+│   │   ├── urls.py            # Route mapping
+│   │   ├── permissions.py     # IsLaunchTeamForProject
+│   │   ├── admin.py           # Django Admin for Launch models
+│   │   └── tests/
+│   │       └── test_launch.py # Launch tests (32)
 │   ├── innovation/            # Innovation track (Phase 4)
 │   ├── audit/                 # Audit logging
 │   │   ├── models.py          # AuditLog model (immutable)
@@ -303,7 +361,7 @@ nu-launch-labs/
 │   │   ├── urls.py            # Route mapping
 │   │   ├── admin.py           # Django Admin (read-only)
 │   │   └── tests/
-│   │       └── test_audit.py  # Audit tests (15+)
+│   │       └── test_audit.py  # Audit tests (13)
 │   └── notifications/         # Email system (Phase 5)
 ├── utils/
 │   ├── exceptions.py          # Custom exceptions + error handler
@@ -336,17 +394,19 @@ nu-launch-labs/
 ## 🧪 Running Tests
 
 ```bash
-# All tests
+# All tests (138)
 pytest -v
 
 # With coverage
 pytest --cov=apps --cov-report=term-missing -v
 
-# Specific test class
-pytest apps/accounts/tests/test_auth.py::TestRegistration -v
+# Specific phase
+pytest apps/accounts/tests/ -v                    # Phase 1 auth + GI
+pytest apps/cycles/tests/ apps/audit/tests/ -v    # Phase 2
+pytest apps/launch/tests/ -v                      # Phase 3
 
-# Phase 2 tests only
-pytest apps/cycles/tests/ apps/audit/tests/ apps/accounts/tests/test_gi.py -v
+# Specific test class
+pytest apps/launch/tests/test_launch.py::TestSelectCandidate -v
 ```
 
 ## 🔧 Environment Variables
@@ -364,8 +424,20 @@ pytest apps/cycles/tests/ apps/audit/tests/ apps/accounts/tests/test_gi.py -v
 | `ACCESS_TOKEN_LIFETIME_MINUTES` | JWT access token TTL | `30` |
 | `REFRESH_TOKEN_LIFETIME_DAYS` | JWT refresh token TTL | `7` |
 
+## 📈 Development Progress
+
+| Phase | Status | Endpoints | Tests |
+|-------|--------|-----------|-------|
+| Phase 1: Foundation | ✅ Complete | 9 | 31 |
+| Phase 2: Cycles + GI + Audit | ✅ Complete | 9 | 67 |
+| Phase 3: Launch Track | ✅ Complete | 12 | 32 |
+| Phase 4: Innovation Track | 🔜 Next | — | — |
+| Phase 5: Admin + Email + Docs | 📋 Planned | — | — |
+| **Total** | | **30** | **138** |
+
 ## 👥 Team
 
 | Member | Owns | Focus Area |
 |--------|------|------------|
 | **Thejesh** | accounts, cycles, innovation, audit, utils | Auth, cycle management, Innovation workflow |
+| **Ethan Resek**| launch (models)| Django ORM|
