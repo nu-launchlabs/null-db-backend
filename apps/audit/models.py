@@ -36,13 +36,11 @@ class AuditLog(models.Model):
         # Launch (Phase 3)
         LAUNCH_PROJECT_CREATED = "LAUNCH_PROJECT_CREATED", "Launch Project Created"
         LAUNCH_PROJECT_DELETED = "LAUNCH_PROJECT_DELETED", "Launch Project Deleted"
-        LAUNCH_APP_SUBMITTED = "LAUNCH_APP_SUBMITTED", "Launch Application Submitted"
-        CANDIDATE_SENT_TO_TEAM = "CANDIDATE_SENT_TO_TEAM", "Candidate Sent to Team"
-        CANDIDATE_SELECTED = "CANDIDATE_SELECTED", "Candidate Selected"
-        LAUNCH_SELECTION_CONFIRMED = (
-            "LAUNCH_SELECTION_CONFIRMED",
-            "Launch Selection Confirmed",
-        )
+        LAUNCH_APPLICATION_SUBMITTED = "LAUNCH_APPLICATION_SUBMITTED", "Launch Application Submitted"
+        LAUNCH_APPLICATION_FILTERED = "LAUNCH_APPLICATION_FILTERED", "Launch Application Filtered"
+        LAUNCH_SENT_TO_TEAM = "LAUNCH_SENT_TO_TEAM", "Launch Sent to Team"
+        LAUNCH_CANDIDATE_SELECTED = "LAUNCH_CANDIDATE_SELECTED", "Launch Candidate Selected"
+        LAUNCH_CANDIDATE_REJECTED = "LAUNCH_CANDIDATE_REJECTED", "Launch Candidate Rejected"
 
         # Innovation (Phase 4)
         PROPOSAL_SUBMITTED = "PROPOSAL_SUBMITTED", "Proposal Submitted"
