@@ -41,6 +41,7 @@ LOCAL_APPS = [
     "apps.launch",
     "apps.innovation",
     "apps.audit",
+    "apps.notifications",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -205,6 +206,8 @@ EMAIL_BACKEND = config(
     "EMAIL_BACKEND",
     default="django.core.mail.backends.console.EmailBackend",
 )
+EMAIL_HOST = config("EMAIL_HOST", default="localhost")
+EMAIL_PORT = config("EMAIL_PORT", cast=int, default=25)
 DEFAULT_FROM_EMAIL = "NU Launch Labs <noreply@nulaunchlabs.com>"
 
 # Logging
