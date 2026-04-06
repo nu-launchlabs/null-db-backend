@@ -608,9 +608,10 @@ class LaunchService:
                 cycle=cycle,
                 track=Assignment.Track.LAUNCH,
                 launch_project=candidate.project,
-                innovation_project_id_placeholder=None,
+                innovation_project=None,
                 assigned_by=selected_by,
             )
+
         else:
             # This shouldn't happen (caught above), but safety net
             assignment = existing_assignment
