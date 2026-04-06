@@ -467,7 +467,7 @@ class TestSelectCandidate:
         assignment = Assignment.objects.get(user=student_user, cycle=active_cycle)
         assert assignment.track == Assignment.Track.LAUNCH
         assert assignment.launch_project == project
-        assert assignment.innovation_project_id_placeholder is None
+        assert assignment.innovation_project is None
         assert assignment.assigned_by == launch_team_user
 
     def test_other_team_cannot_select(

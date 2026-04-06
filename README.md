@@ -87,17 +87,49 @@ Backend API for the NU Launch Labs application cycle management platform. Manage
 - [x] Conflict detection: blocks if student already has Launch assignment
 - [x] Launch priority: replaces Innovation assignment with warning
 
-#### Assignments
-- [x] Assignment model — single source of truth for student-project mapping
+### Phase 4: Innovation Track ✅
+
+#### Proposals
+- [x] Students submit one proposal per cycle when `innovation_open=True` and GI is complete
+- [x] Proposals blocked if student is already assigned this cycle
+- [x] Admin/Ops lists all proposals with status filtering (SUBMITTED, APPROVED, REJECTED)
+- [x] Students can view their own proposal
+
+#### Proposal Review
+- [x] Admin/Ops approves proposal → creates InnovationProject with proposer as lead
+- [x] Admin/Ops rejects proposal → proposer becomes eligible to submit preferences
+- [x] Only SUBMITTED proposals can be approved or rejected
+
+#### Innovation Projects
+- [x] Approved proposals become InnovationProject records
+- [x] Project listing and detail views for all authenticated users
+- [x] Tracks preference count and assigned member count
+
+#### Preferences
+- [x] Students rank up to 3 Innovation projects by preference (rank 1, 2, 3)
+- [x] Requires: GI complete, `innovation_open=True`, not assigned, no active proposal
+- [x] Rejected proposers can submit preferences (rejoin the pool)
+- [x] Upsert pattern: resubmitting replaces existing preferences
+- [x] Update via PUT (same logic as POST)
+- [x] Admin/Ops views preference breakdown per project
+
+#### Innovation Assignment
+- [x] Admin/Ops assigns students to Innovation projects anytime (not toggle-gated)
+- [x] Conflict detection: blocks if student already assigned (Launch or Innovation)
+- [x] Team capacity enforcement (max_members check)
+- [x] Only students (USER role) can be assigned
+
+#### Assignments (Updated)
+- [x] Assignment model upgraded: `innovation_project_id_placeholder` → real FK to InnovationProject
+- [x] XOR check constraint: exactly one of `launch_project` or `innovation_project` must be set
 - [x] `UNIQUE(user, cycle)` — one project per student per semester
-- [x] Assigned students locked out of further applications
 
 #### Infrastructure
 - [x] PostgreSQL 16 via Docker
 - [x] Swagger UI + ReDoc API documentation
 - [x] Custom exception handler (consistent error format)
 - [x] CORS configured for Next.js frontend
-- [x] 138 automated tests with pytest
+- [x] 177 automated tests with pytest
 
 
 ## 🛠️ Tech Stack
@@ -296,6 +328,23 @@ python manage.py runserver
 | POST | `/api/v1/launch/candidates/{id}/select/` | Launch Team | Select → auto-assign |
 | POST | `/api/v1/launch/candidates/{id}/reject/` | Launch Team | Reject candidate |
 
+### Innovation Track (Phase 4) — 11 endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/v1/innovation/proposals/` | Student (GI done) | Submit proposal |
+| GET | `/api/v1/innovation/proposals/list/` | Admin, Ops | List all proposals |
+| GET | `/api/v1/innovation/my-proposal/` | Student | View own proposal |
+| POST | `/api/v1/innovation/proposals/{id}/approve/` | Admin, Ops | Approve → create project |
+| POST | `/api/v1/innovation/proposals/{id}/reject/` | Admin, Ops | Reject proposal |
+| GET | `/api/v1/innovation/projects/` | Any | List Innovation projects |
+| GET | `/api/v1/innovation/projects/{id}/` | Any | Project detail |
+| POST | `/api/v1/innovation/preferences/` | Student (GI done) | Submit preferences (1-3) |
+| PUT | `/api/v1/innovation/preferences/` | Student (GI done) | Update preferences |
+| GET | `/api/v1/innovation/my-preferences/` | Student | View own preferences |
+| GET | `/api/v1/innovation/projects/{id}/preferences/` | Admin, Ops | View who ranked a project |
+| POST | `/api/v1/innovation/assign/` | Admin, Ops | Assign student to project |
+
 ### Error Response Format
 
 All errors return a consistent structure:
@@ -351,8 +400,17 @@ nu-launch-labs/
 │   │   ├── permissions.py     # IsLaunchTeamForProject
 │   │   ├── admin.py           # Django Admin for Launch models
 │   │   └── tests/
-│   │       └── test_launch.py # Launch tests (32)
-│   ├── innovation/            # Innovation track (Phase 4)
+│   │       └── test_launch.py # Launch tests (40)
+│   ├── innovation/            # Innovation track
+│   │   ├── models.py          # Proposals, InnovationProject, InnovationPreference
+│   │   ├── choices.py         # ProposalStatus enum
+│   │   ├── serializers.py     # Innovation input/output DTOs
+│   │   ├── services.py        # Full Innovation workflow logic
+│   │   ├── views.py           # 11 Innovation endpoints
+│   │   ├── urls.py            # Route mapping
+│   │   ├── admin.py           # Django Admin for Innovation models
+│   │   └── tests/
+│   │       └── test_innovation.py # Innovation tests (39)
 │   ├── audit/                 # Audit logging
 │   │   ├── models.py          # AuditLog model (immutable)
 │   │   ├── serializers.py     # Audit DTOs
@@ -394,7 +452,7 @@ nu-launch-labs/
 ## 🧪 Running Tests
 
 ```bash
-# All tests (138)
+# All tests (177)
 pytest -v
 
 # With coverage
@@ -404,9 +462,10 @@ pytest --cov=apps --cov-report=term-missing -v
 pytest apps/accounts/tests/ -v                    # Phase 1 auth + GI
 pytest apps/cycles/tests/ apps/audit/tests/ -v    # Phase 2
 pytest apps/launch/tests/ -v                      # Phase 3
+pytest apps/innovation/tests/ -v                  # Phase 4
 
 # Specific test class
-pytest apps/launch/tests/test_launch.py::TestSelectCandidate -v
+pytest apps/innovation/tests/test_innovation.py::TestPreferences -v
 ```
 
 ## 🔧 Environment Variables
@@ -430,14 +489,15 @@ pytest apps/launch/tests/test_launch.py::TestSelectCandidate -v
 |-------|--------|-----------|-------|
 | Phase 1: Foundation | ✅ Complete | 9 | 31 |
 | Phase 2: Cycles + GI + Audit | ✅ Complete | 9 | 67 |
-| Phase 3: Launch Track | ✅ Complete | 12 | 32 |
-| Phase 4: Innovation Track | 🔜 Next | — | — |
+| Phase 3: Launch Track | ✅ Complete | 12 | 40 |
+| Phase 4: Innovation Track | ✅ Complete | 11 | 39 |
 | Phase 5: Admin + Email + Docs | 📋 Planned | — | — |
-| **Total** | | **30** | **138** |
+| **Total** | | **41** | **177** |
 
 ## 👥 Team
 
 | Member | Owns | Focus Area |
 |--------|------|------------|
 | **Thejesh** | accounts, cycles, innovation, audit, utils | Auth, cycle management, Innovation workflow |
-| **Ethan Resek**| launch (models)| Django ORM|
+| **Ethan Resek** | launch | Launch model |
+| **Sharvari** | innovation | innovation model |
