@@ -80,12 +80,9 @@ class Assignment(TimestampMixin, models.Model):
     """
     The single source of truth for student-project assignments.
 
-    Core constraint: UNIQUE(user, cycle) = one project per student per semester.
-
-    Phase 3: Only Launch assignments are supported via FK.
-    innovation_project_id_placeholder stores the InnovationProject ID as a
-    plain integer. In Phase 4, this becomes a proper ForeignKey and the
-    CHECK constraint is added to enforce exactly-one-project.
+    Core constraints:
+        - UNIQUE(user, cycle) = one project per student per semester
+        - CHECK: exactly one of launch_project or innovation_project must be set
     """
 
     class Track(models.TextChoices):
@@ -113,7 +110,7 @@ class Assignment(TimestampMixin, models.Model):
         help_text="LAUNCH or INNOVATION",
     )
 
-    # Launch FK (active now)
+    # Launch FK
     launch_project = models.ForeignKey(
         "launch.LaunchProject",
         on_delete=models.SET_NULL,
@@ -122,11 +119,13 @@ class Assignment(TimestampMixin, models.Model):
         related_name="assignments",
     )
 
-    # Innovation placeholder (becomes FK in Phase 4)
-    innovation_project_id_placeholder = models.BigIntegerField(
+    # Innovation FK (upgraded from placeholder)
+    innovation_project = models.ForeignKey(
+        "innovation.InnovationProject",
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="Placeholder for InnovationProject ID. Becomes FK in Phase 4.",
+        related_name="assignments",
     )
 
     # Who made the assignment
@@ -148,12 +147,23 @@ class Assignment(TimestampMixin, models.Model):
                 fields=["user", "cycle"],
                 name="one_assignment_per_user_per_cycle",
             ),
-            # CHECK constraint for exactly-one-project will be added in Phase 4
-            # when innovation_project becomes a proper FK.
+            models.CheckConstraint(
+                check=(
+                    models.Q(
+                        launch_project__isnull=False,
+                        innovation_project__isnull=True,
+                    )
+                    | models.Q(
+                        launch_project__isnull=True,
+                        innovation_project__isnull=False,
+                    )
+                ),
+                name="exactly_one_project_assigned",
+            ),
         ]
 
     def __str__(self):
-        project = self.launch_project or f"Innovation#{self.innovation_project_id_placeholder}"
+        project = self.launch_project or self.innovation_project
         return (
             f"Assignment: {self.user.first_name} {self.user.last_name} "
             f"→ {project} ({self.track})"

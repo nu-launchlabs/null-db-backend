@@ -39,7 +39,7 @@ class AssignmentAdmin(admin.ModelAdmin):
         "cycle",
         "track",
         "launch_project",
-        "innovation_project_id_placeholder",
+        "innovation_project",
         "assigned_by",
         "assigned_at",
     ]
@@ -54,5 +54,6 @@ class AssignmentAdmin(admin.ModelAdmin):
         "user",
         "cycle",
         "launch_project",
+        "innovation_project",
         "assigned_by",
     ]

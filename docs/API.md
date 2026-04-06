@@ -534,8 +534,6 @@ Cycle statistics dashboard with user counts and GI completion data.
 }
 ```
 
-Note: `launch_apps`, `launch_assigned`, `innovation_proposals`, `innovation_assigned` will be populated in Phase 3 & 4.
-
 ---
 
 ### POST `/auth/general-interest/`
@@ -730,23 +728,6 @@ List all Launch projects for the active cycle.
 
 **Auth Required:** Any authenticated user
 
-**Success Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "title": "AI Customer Support Bot",
-    "description": "Build an AI-powered chatbot using LLMs.",
-    "requirements": "Python, NLP, React",
-    "max_members": 4,
-    "team": 2,
-    "team_name": "Rocket Labs",
-    "application_count": 3,
-    "created_at": "2026-03-19T20:00:00Z"
-  }
-]
-```
-
 ---
 
 ### GET `/launch/projects/{project_id}/`
@@ -764,13 +745,6 @@ Delete a Launch project.
 **Auth Required:** ADMIN only
 
 **Business Rules:** Cannot delete if any candidate has been SELECTED (assignment exists).
-
-**Error Responses:**
-| Status | Reason |
-|--------|--------|
-| 400 | Project has selected candidates |
-| 403 | Not an admin |
-| 404 | Project not found |
 
 ---
 
@@ -792,37 +766,11 @@ Student applies to a Launch Project.
 }
 ```
 
-**Success Response (201 Created):**
-```json
-{
-  "message": "Application submitted successfully.",
-  "application": {
-    "id": 1,
-    "project": 1,
-    "project_title": "AI Customer Support Bot",
-    "resume": "https://drive.google.com/my-resume",
-    "portfolio": "https://github.com/username",
-    "responses": {"motivation": "I love building AI products"},
-    "status": "SUBMITTED",
-    "status_display": "Submitted",
-    "created_at": "2026-03-19T20:30:00Z"
-  }
-}
-```
-
 **Business Rules:**
 - `launch_open` must be True on the active cycle
 - Student must have completed GI form
 - No duplicate application to the same project in the same cycle
 - Student must not already be assigned this cycle
-
-**Error Responses:**
-| Status | Reason |
-|--------|--------|
-| 400 | Launch closed, already assigned, business rule violation |
-| 403 | Not a student, GI not complete |
-| 404 | Project not found in current cycle |
-| 409 | Duplicate application |
 
 ---
 
@@ -836,26 +784,6 @@ View all applicants for a specific project.
 | Param | Type | Description |
 |-------|------|-------------|
 | `status` | string | Filter by status: SUBMITTED, FILTERED, SENT_TO_TEAM, SELECTED, NOT_SELECTED |
-
-**Success Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "user": 4,
-    "applicant_name": "Alice Johnson",
-    "applicant_email": "alice@northeastern.edu",
-    "project": 1,
-    "project_title": "AI Customer Support Bot",
-    "resume": "https://drive.google.com/alice-resume",
-    "portfolio": "https://github.com/alice",
-    "responses": {"motivation": "I love AI"},
-    "status": "SUBMITTED",
-    "status_display": "Submitted",
-    "created_at": "2026-03-19T20:30:00Z"
-  }
-]
-```
 
 ---
 
@@ -872,22 +800,7 @@ Bulk mark applications as FILTERED.
 }
 ```
 
-**Success Response (200 OK):**
-```json
-{
-  "message": "3 application(s) filtered.",
-  "applications": [ ... ]
-}
-```
-
 **Business Rules:** Only SUBMITTED applications can be filtered.
-
-**Error Responses:**
-| Status | Reason |
-|--------|--------|
-| 400 | Application not in SUBMITTED status |
-| 403 | Not Admin/Ops |
-| 404 | Application ID not found |
 
 ---
 
@@ -904,38 +817,7 @@ Send filtered applications to the Launch Team for review. Creates LaunchCandidat
 }
 ```
 
-**Success Response (200 OK):**
-```json
-{
-  "message": "2 application(s) sent to team.",
-  "candidates": [
-    {
-      "id": 1,
-      "application": 1,
-      "project": 1,
-      "applicant_name": "Alice Johnson",
-      "applicant_email": "alice@northeastern.edu",
-      "resume": "https://drive.google.com/alice-resume",
-      "portfolio": "https://github.com/alice",
-      "responses": {"motivation": "I love AI"},
-      "status": "PENDING_REVIEW",
-      "status_display": "Pending review",
-      "selected_at": null,
-      "created_at": "2026-03-19T21:00:00Z"
-    }
-  ]
-}
-```
-
 **Business Rules:** Only FILTERED applications can be sent. Cannot double-send.
-
-**Error Responses:**
-| Status | Reason |
-|--------|--------|
-| 400 | Application not in FILTERED status |
-| 403 | Not Admin/Ops |
-| 404 | Application ID not found |
-| 409 | Application already sent to team |
 
 ---
 
@@ -945,23 +827,6 @@ View own Launch applications for the current cycle.
 
 **Auth Required:** USER (student) only
 
-**Success Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "project": 1,
-    "project_title": "AI Customer Support Bot",
-    "resume": "https://drive.google.com/my-resume",
-    "portfolio": "https://github.com/username",
-    "responses": {"motivation": "I love AI"},
-    "status": "SUBMITTED",
-    "status_display": "Submitted",
-    "created_at": "2026-03-19T20:30:00Z"
-  }
-]
-```
-
 ---
 
 ### GET `/launch/candidates/`
@@ -969,26 +834,6 @@ View own Launch applications for the current cycle.
 View candidates sent to this Launch Team member's projects. Only shows candidates for projects the team member owns.
 
 **Auth Required:** LAUNCH_TEAM only
-
-**Success Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "application": 1,
-    "project": 1,
-    "applicant_name": "Alice Johnson",
-    "applicant_email": "alice@northeastern.edu",
-    "resume": "https://drive.google.com/alice-resume",
-    "portfolio": "https://github.com/alice",
-    "responses": {"motivation": "I love AI"},
-    "status": "PENDING_REVIEW",
-    "status_display": "Pending review",
-    "selected_at": null,
-    "created_at": "2026-03-19T21:00:00Z"
-  }
-]
-```
 
 ---
 
@@ -998,42 +843,13 @@ Launch Team selects a candidate. Auto-creates an Assignment record (track=LAUNCH
 
 **Auth Required:** LAUNCH_TEAM only
 
-**Success Response (200 OK):**
-```json
-{
-  "message": "Candidate selected and assigned.",
-  "candidate_id": 1,
-  "assignment_id": 1,
-  "applicant_email": "alice@northeastern.edu",
-  "project_title": "AI Customer Support Bot"
-}
-```
-
-If the student already has an Innovation assignment, it is replaced and a warning is returned:
-```json
-{
-  "message": "Candidate selected and assigned.",
-  "candidate_id": 1,
-  "assignment_id": 1,
-  "applicant_email": "alice@northeastern.edu",
-  "project_title": "AI Customer Support Bot",
-  "warning": "WARNING: alice@northeastern.edu currently has an Innovation assignment. This Launch selection will require admin to resolve the conflict."
-}
-```
-
 **Business Rules:**
 - Only PENDING_REVIEW candidates can be selected
 - Launch Team can only select candidates for their own projects
 - Blocks if student already has a Launch assignment (409 Conflict)
 - Launch takes priority over Innovation assignments
 
-**Error Responses:**
-| Status | Reason |
-|--------|--------|
-| 400 | Candidate not in PENDING_REVIEW status |
-| 403 | Not the project owner |
-| 404 | Candidate not found |
-| 409 | Student already has a Launch assignment |
+If the student has an Innovation assignment, it is replaced and a warning is returned.
 
 ---
 
@@ -1043,27 +859,11 @@ Launch Team rejects a candidate.
 
 **Auth Required:** LAUNCH_TEAM only
 
-**Success Response (200 OK):**
-```json
-{
-  "message": "Candidate rejected.",
-  "candidate_id": 1,
-  "applicant_email": "alice@northeastern.edu"
-}
-```
-
 **Business Rules:** Only PENDING_REVIEW candidates can be rejected. Sets candidate status to REJECTED and application status to NOT_SELECTED.
-
-**Error Responses:**
-| Status | Reason |
-|--------|--------|
-| 400 | Candidate not in PENDING_REVIEW status |
-| 403 | Not the project owner |
-| 404 | Candidate not found |
 
 ---
 
-## Launch Application Status Flow
+### Launch Application Status Flow
 
 ```
 SUBMITTED
@@ -1079,6 +879,407 @@ SENT_TO_TEAM
     ├──▶ NOT_SELECTED   (Launch Team rejects)
     │
     └──▶ WITHDRAWN      (Student withdraws — future feature)
+```
+
+---
+
+## Phase 4 Endpoints (11 total)
+
+### POST `/innovation/proposals/`
+
+Student submits an Innovation proposal for the current cycle.
+
+**Auth Required:** USER with `is_gi_complete=True`
+
+**Request Body:**
+```json
+{
+  "title": "AI-Powered Campus Navigator",
+  "description": "A mobile app that uses AR to help students navigate campus buildings.",
+  "tech_stack": "React Native, Python, ARKit",
+  "max_members": 5
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "message": "Proposal submitted successfully.",
+  "proposal": {
+    "id": 1,
+    "title": "AI-Powered Campus Navigator",
+    "description": "A mobile app that uses AR to help students navigate campus buildings.",
+    "tech_stack": "React Native, Python, ARKit",
+    "max_members": 5,
+    "status": "SUBMITTED",
+    "status_display": "Submitted",
+    "submitted_at": "2026-03-25T20:00:00Z"
+  }
+}
+```
+
+**Business Rules:**
+- `innovation_open` must be True on the active cycle
+- GI must be complete
+- One proposal per student per cycle
+- Student must not already be assigned this cycle
+
+**Error Responses:**
+| Status | Reason |
+|--------|--------|
+| 400 | Innovation closed, already assigned, validation error |
+| 403 | Not a student, GI not complete |
+| 404 | No active cycle |
+| 409 | Already submitted a proposal this cycle |
+
+---
+
+### GET `/innovation/proposals/list/`
+
+List all proposals for the active cycle. Supports status filtering.
+
+**Auth Required:** ADMIN or OPS_CHAIR
+
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| `status` | string | Filter by: SUBMITTED, APPROVED, REJECTED |
+
+**Success Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "cycle": 1,
+    "proposer": 4,
+    "proposer_name": "Alice Johnson",
+    "proposer_email": "alice@northeastern.edu",
+    "title": "AI-Powered Campus Navigator",
+    "description": "A mobile app...",
+    "tech_stack": "React Native, Python, ARKit",
+    "max_members": 5,
+    "status": "SUBMITTED",
+    "status_display": "Submitted",
+    "submitted_at": "2026-03-25T20:00:00Z"
+  }
+]
+```
+
+---
+
+### GET `/innovation/my-proposal/`
+
+Student views their own proposal for the current cycle.
+
+**Auth Required:** USER (student) only
+
+**Success Response (200 OK):** Same shape as the `proposal` field in the submit response.
+
+**Error Responses:**
+| Status | Reason |
+|--------|--------|
+| 404 | No proposal found for the current cycle |
+
+---
+
+### POST `/innovation/proposals/{proposal_id}/approve/`
+
+Admin/Ops approves a proposal. Creates an InnovationProject with the proposer as project lead.
+
+**Auth Required:** ADMIN or OPS_CHAIR
+
+**Success Response (200 OK):**
+```json
+{
+  "message": "Proposal approved. Innovation project created.",
+  "proposal": {
+    "id": 1,
+    "status": "APPROVED",
+    "proposer_name": "Alice Johnson",
+    "proposer_email": "alice@northeastern.edu",
+    ...
+  },
+  "project": {
+    "id": 1,
+    "proposal_id": 1,
+    "cycle": 1,
+    "title": "AI-Powered Campus Navigator",
+    "lead": 4,
+    "lead_name": "Alice Johnson",
+    "lead_email": "alice@northeastern.edu",
+    "max_members": 5,
+    "preference_count": 0,
+    "assigned_count": 0,
+    "created_at": "2026-03-25T20:30:00Z"
+  }
+}
+```
+
+**Business Rules:**
+- Only SUBMITTED proposals can be approved
+- Does NOT auto-assign the proposer (assignment happens separately)
+- Proposer becomes the project lead on the InnovationProject record
+
+**Error Responses:**
+| Status | Reason |
+|--------|--------|
+| 400 | Proposal is not in SUBMITTED status |
+| 403 | Not Admin/Ops |
+| 404 | Proposal not found |
+
+---
+
+### POST `/innovation/proposals/{proposal_id}/reject/`
+
+Admin/Ops rejects a proposal. After rejection, the proposer becomes eligible to submit preferences.
+
+**Auth Required:** ADMIN or OPS_CHAIR
+
+**Success Response (200 OK):**
+```json
+{
+  "message": "Proposal rejected.",
+  "proposal": {
+    "id": 1,
+    "status": "REJECTED",
+    ...
+  }
+}
+```
+
+**Business Rules:** Only SUBMITTED proposals can be rejected.
+
+**Error Responses:**
+| Status | Reason |
+|--------|--------|
+| 400 | Proposal is not in SUBMITTED status |
+| 403 | Not Admin/Ops |
+| 404 | Proposal not found |
+
+---
+
+### GET `/innovation/projects/`
+
+List all approved Innovation projects for the active cycle.
+
+**Auth Required:** Any authenticated user
+
+**Success Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "title": "AI-Powered Campus Navigator",
+    "lead": 4,
+    "lead_name": "Alice Johnson",
+    "lead_email": "alice@northeastern.edu",
+    "max_members": 5,
+    "preference_count": 3,
+    "assigned_count": 1,
+    "created_at": "2026-03-25T20:30:00Z"
+  }
+]
+```
+
+---
+
+### GET `/innovation/projects/{project_id}/`
+
+Get full detail of an Innovation project.
+
+**Auth Required:** Any authenticated user
+
+**Success Response (200 OK):**
+```json
+{
+  "id": 1,
+  "proposal_id": 1,
+  "cycle": 1,
+  "title": "AI-Powered Campus Navigator",
+  "lead": 4,
+  "lead_name": "Alice Johnson",
+  "lead_email": "alice@northeastern.edu",
+  "max_members": 5,
+  "preference_count": 3,
+  "assigned_count": 1,
+  "created_at": "2026-03-25T20:30:00Z"
+}
+```
+
+---
+
+### POST `/innovation/preferences/`
+
+Student submits ranked preferences for Innovation projects (1-3 projects).
+
+**Auth Required:** USER with `is_gi_complete=True`
+
+**Request Body:**
+```json
+{
+  "preferences": [
+    {"project_id": 1, "rank": 1},
+    {"project_id": 3, "rank": 2},
+    {"project_id": 5, "rank": 3}
+  ]
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "message": "Preferences submitted successfully.",
+  "preferences": [
+    {"id": 1, "project": 1, "project_title": "AI Navigator", "rank": 1, "submitted_at": "..."},
+    {"id": 2, "project": 3, "project_title": "FinTech App", "rank": 2, "submitted_at": "..."},
+    {"id": 3, "project": 5, "project_title": "Health Tracker", "rank": 3, "submitted_at": "..."}
+  ]
+}
+```
+
+**Business Rules:**
+- `innovation_open` must be True
+- GI must be complete
+- Student must NOT be already assigned this cycle
+- Student must NOT have a pending (SUBMITTED) or approved proposal
+- Rejected proposal is OK — they rejoin the pool
+- Max 3 preferences, unique ranks (1, 2, 3), unique projects
+- Replaces existing preferences (upsert pattern)
+
+**Error Responses:**
+| Status | Reason |
+|--------|--------|
+| 400 | Innovation closed, already assigned, active proposal, validation errors |
+| 403 | Not a student, GI not complete |
+| 404 | Project not found in current cycle |
+
+---
+
+### PUT `/innovation/preferences/`
+
+Update preferences. Same logic as POST — replaces existing.
+
+**Auth Required:** USER with `is_gi_complete=True`
+
+**Request Body:** Same as POST.
+
+**Success Response (200 OK):** Same shape as POST response.
+
+---
+
+### GET `/innovation/my-preferences/`
+
+View own Innovation preferences for the current cycle.
+
+**Auth Required:** USER (student) only
+
+**Success Response (200 OK):**
+```json
+[
+  {"id": 1, "project": 1, "project_title": "AI Navigator", "rank": 1, "submitted_at": "..."},
+  {"id": 2, "project": 3, "project_title": "FinTech App", "rank": 2, "submitted_at": "..."}
+]
+```
+
+---
+
+### GET `/innovation/projects/{project_id}/preferences/`
+
+Admin/Ops views all students who ranked this project, with rank breakdown.
+
+**Auth Required:** ADMIN or OPS_CHAIR
+
+**Success Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "user": 5,
+    "user_name": "Bob Smith",
+    "user_email": "bob@northeastern.edu",
+    "project": 1,
+    "project_title": "AI Navigator",
+    "rank": 1,
+    "submitted_at": "2026-03-25T21:00:00Z"
+  },
+  {
+    "id": 4,
+    "user": 7,
+    "user_name": "Carol Lee",
+    "user_email": "carol@northeastern.edu",
+    "project": 1,
+    "project_title": "AI Navigator",
+    "rank": 2,
+    "submitted_at": "2026-03-25T21:30:00Z"
+  }
+]
+```
+
+---
+
+### POST `/innovation/assign/`
+
+Admin/Ops assigns a student to an Innovation project. Not gated by `innovation_open` toggle.
+
+**Auth Required:** ADMIN or OPS_CHAIR
+
+**Request Body:**
+```json
+{
+  "user_id": 5,
+  "project_id": 1
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "message": "Student assigned to Innovation project.",
+  "assignment_id": 3,
+  "student_email": "bob@northeastern.edu",
+  "project_title": "AI-Powered Campus Navigator",
+  "track": "INNOVATION"
+}
+```
+
+**Business Rules:**
+- Student must exist and be a USER role
+- Project must exist in the current cycle
+- Student must NOT already be assigned (Launch or Innovation)
+- Team capacity check (max_members)
+
+**Error Responses:**
+| Status | Reason |
+|--------|--------|
+| 400 | Not a student, team full, validation error |
+| 403 | Not Admin/Ops |
+| 404 | User or project not found |
+| 409 | Student already assigned this cycle |
+
+---
+
+### Innovation Proposal Status Flow
+
+```
+SUBMITTED
+    │
+    ├──▶ APPROVED   (Admin/Ops approves → InnovationProject created)
+    │                 Proposer = project lead
+    │                 Proposer blocked from preferences
+    │
+    └──▶ REJECTED   (Admin/Ops rejects)
+                      Proposer can now submit preferences
+```
+
+### Innovation Preference Eligibility
+
+```
+Can submit preferences if ALL of:
+  ✅ GI complete
+  ✅ innovation_open = True
+  ✅ Not assigned to any project (Launch or Innovation)
+  ✅ No SUBMITTED or APPROVED proposal this cycle
+  ✅ (REJECTED proposal is OK — they rejoin the pool)
 ```
 
 ---
@@ -1160,6 +1361,18 @@ For validation errors, `details` has field-level info:
 | GET /launch/candidates/ | ❌ 403 | ❌ 403 | ❌ 403 | ✅ | ❌ 401 |
 | POST /launch/candidates/{id}/select/ | ❌ 403 | ❌ 403 | ❌ 403 | ✅ | ❌ 401 |
 | POST /launch/candidates/{id}/reject/ | ❌ 403 | ❌ 403 | ❌ 403 | ✅ | ❌ 401 |
+| POST /innovation/proposals/ | ❌ 403 | ❌ 403 | ✅ (GI) | ❌ 403 | ❌ 401 |
+| GET /innovation/proposals/list/ | ✅ | ✅ | ❌ 403 | ❌ 403 | ❌ 401 |
+| GET /innovation/my-proposal/ | ❌ 403 | ❌ 403 | ✅ | ❌ 403 | ❌ 401 |
+| POST /innovation/proposals/{id}/approve/ | ✅ | ✅ | ❌ 403 | ❌ 403 | ❌ 401 |
+| POST /innovation/proposals/{id}/reject/ | ✅ | ✅ | ❌ 403 | ❌ 403 | ❌ 401 |
+| GET /innovation/projects/ | ✅ | ✅ | ✅ | ✅ | ❌ 401 |
+| GET /innovation/projects/{id}/ | ✅ | ✅ | ✅ | ✅ | ❌ 401 |
+| POST /innovation/preferences/ | ❌ 403 | ❌ 403 | ✅ (GI) | ❌ 403 | ❌ 401 |
+| PUT /innovation/preferences/ | ❌ 403 | ❌ 403 | ✅ (GI) | ❌ 403 | ❌ 401 |
+| GET /innovation/my-preferences/ | ❌ 403 | ❌ 403 | ✅ | ❌ 403 | ❌ 401 |
+| GET /innovation/projects/{id}/preferences/ | ✅ | ✅ | ❌ 403 | ❌ 403 | ❌ 401 |
+| POST /innovation/assign/ | ✅ | ✅ | ❌ 403 | ❌ 403 | ❌ 401 |
 
 ## Audit Action Types
 
@@ -1181,3 +1394,10 @@ For validation errors, `details` has field-level info:
 | `LAUNCH_SENT_TO_TEAM` | Admin/Ops sends candidate to Launch Team |
 | `LAUNCH_CANDIDATE_SELECTED` | Launch Team selects a candidate |
 | `LAUNCH_CANDIDATE_REJECTED` | Launch Team rejects a candidate |
+| `PROPOSAL_SUBMITTED` | Student submits an Innovation proposal |
+| `PROPOSAL_APPROVED` | Admin/Ops approves a proposal |
+| `PROPOSAL_REJECTED` | Admin/Ops rejects a proposal |
+| `INNOVATION_PROJECT_DELETED` | Admin deletes an Innovation project |
+| `PREFERENCES_SUBMITTED` | Student submits/updates preferences |
+| `INNOVATION_ASSIGNED` | Admin/Ops assigns student to Innovation project |
+| `ASSIGNMENT_REMOVED` | Admin removes an assignment (Phase 5) |

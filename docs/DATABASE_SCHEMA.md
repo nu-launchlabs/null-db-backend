@@ -1,6 +1,6 @@
 # 🗄️ Database Schema
 
-PostgreSQL 16 — Current state after Phase 3.
+PostgreSQL 16 — Current state after Phase 4.
 
 ---
 
@@ -143,7 +143,7 @@ CREATE INDEX idx_audit_logs_target ON audit_logs (target_type, target_id);
 
 Audit logs are **append-only**. No updates or deletes are permitted.
 
-### Action Values (Phase 1 + 2 + 3)
+### Action Values (All Phases)
 
 ```sql
 -- Phase 1: Accounts
@@ -167,6 +167,17 @@ Audit logs are **append-only**. No updates or deletes are permitted.
 'LAUNCH_SENT_TO_TEAM'
 'LAUNCH_CANDIDATE_SELECTED'
 'LAUNCH_CANDIDATE_REJECTED'
+
+-- Phase 4: Innovation Track
+'PROPOSAL_SUBMITTED'
+'PROPOSAL_APPROVED'
+'PROPOSAL_REJECTED'
+'INNOVATION_PROJECT_DELETED'
+'PREFERENCES_SUBMITTED'
+'INNOVATION_ASSIGNED'
+
+-- Phase 5: Admin (planned)
+'ASSIGNMENT_REMOVED'
 ```
 
 ---
@@ -234,12 +245,6 @@ CREATE TABLE launch_applications (
 'WITHDRAWN'       -- Student withdrew (future feature)
 ```
 
-### Status Flow
-
-```
-SUBMITTED → FILTERED → SENT_TO_TEAM → SELECTED / NOT_SELECTED
-```
-
 ---
 
 ## Phase 3: Launch Candidates
@@ -271,24 +276,30 @@ CREATE TABLE launch_candidates (
 
 ---
 
-## Phase 3: Assignments
+## Assignments (Phase 3 + Phase 4 upgrade)
 
 ### DDL
 
 ```sql
 CREATE TABLE assignments (
-    id                                    BIGSERIAL PRIMARY KEY,
-    user_id                               BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    cycle_id                              BIGINT NOT NULL REFERENCES application_cycles(id) ON DELETE CASCADE,
-    track                                 VARCHAR(20) NOT NULL,
-    launch_project_id                     BIGINT REFERENCES launch_projects(id) ON DELETE SET NULL,
-    innovation_project_id_placeholder     BIGINT,
-    assigned_by_id                        BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    assigned_at                           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_at                            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at                            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    id                      BIGSERIAL PRIMARY KEY,
+    user_id                 BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    cycle_id                BIGINT NOT NULL REFERENCES application_cycles(id) ON DELETE CASCADE,
+    track                   VARCHAR(20) NOT NULL,
+    launch_project_id       BIGINT REFERENCES launch_projects(id) ON DELETE SET NULL,
+    innovation_project_id   BIGINT REFERENCES innovation_projects(id) ON DELETE SET NULL,
+    assigned_by_id          BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    assigned_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT one_assignment_per_user_per_cycle UNIQUE(user_id, cycle_id)
+    CONSTRAINT one_assignment_per_user_per_cycle UNIQUE(user_id, cycle_id),
+
+    CONSTRAINT exactly_one_project_assigned CHECK (
+        (launch_project_id IS NOT NULL AND innovation_project_id IS NULL)
+        OR
+        (launch_project_id IS NULL AND innovation_project_id IS NOT NULL)
+    )
 );
 ```
 
@@ -297,16 +308,125 @@ CREATE TABLE assignments (
 | `user_id` | BIGINT | FK → users, NOT NULL | The student assigned. |
 | `cycle_id` | BIGINT | FK → application_cycles, NOT NULL | Which cycle. |
 | `track` | VARCHAR(20) | NOT NULL | 'LAUNCH' or 'INNOVATION'. |
-| `launch_project_id` | BIGINT | FK → launch_projects, NULLABLE | Set for Launch assignments. |
-| `innovation_project_id_placeholder` | BIGINT | NULLABLE | Placeholder. Becomes FK in Phase 4. |
+| `launch_project_id` | BIGINT | FK → launch_projects, NULLABLE | Set for Launch assignments. NULL for Innovation. |
+| `innovation_project_id` | BIGINT | FK → innovation_projects, NULLABLE | Set for Innovation assignments. NULL for Launch. |
 | `assigned_by_id` | BIGINT | FK → users, NOT NULL | Who made the assignment. |
 | `assigned_at` | TIMESTAMPTZ | NOT NULL | When the assignment was made. |
 
-### The Core Constraint
+### The Core Constraints
 
-`UNIQUE(user_id, cycle_id)` = each student gets exactly ONE project per semester. When checking "is this user available?", query assignments — if a row exists, they're taken.
+**UNIQUE(user_id, cycle_id)** = each student gets exactly ONE project per semester.
 
-**Note:** The CHECK constraint enforcing exactly one of `launch_project` / `innovation_project` will be added in Phase 4 when `innovation_project_id_placeholder` becomes a proper FK.
+**CHECK (exactly_one_project_assigned)** = exactly one of `launch_project_id` or `innovation_project_id` must be non-NULL. Cannot be both, cannot be neither. This is the XOR constraint that prevents data corruption even if application code has bugs.
+
+---
+
+## Phase 4: Proposals
+
+### DDL
+
+```sql
+CREATE TABLE proposals (
+    id             BIGSERIAL PRIMARY KEY,
+    cycle_id       BIGINT NOT NULL REFERENCES application_cycles(id) ON DELETE CASCADE,
+    proposer_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title          VARCHAR(200) NOT NULL,
+    description    TEXT NOT NULL,
+    tech_stack     TEXT,
+    max_members    INTEGER NOT NULL DEFAULT 4,
+    status         VARCHAR(20) NOT NULL DEFAULT 'SUBMITTED',
+    submitted_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | BIGSERIAL | PRIMARY KEY | Auto-incrementing. |
+| `cycle_id` | BIGINT | FK → application_cycles, NOT NULL | The cycle this proposal belongs to. |
+| `proposer_id` | BIGINT | FK → users, NOT NULL | The student who proposed. |
+| `title` | VARCHAR(200) | NOT NULL | Proposal title. |
+| `description` | TEXT | NOT NULL | Detailed description of proposed project. |
+| `tech_stack` | TEXT | NULLABLE | Technologies to be used. |
+| `max_members` | INTEGER | NOT NULL, DEFAULT 4 | Proposed team size. |
+| `status` | VARCHAR(20) | NOT NULL, DEFAULT 'SUBMITTED' | SUBMITTED, APPROVED, or REJECTED. |
+
+### Status Values
+
+```sql
+'SUBMITTED'  -- Student just proposed
+'APPROVED'   -- Admin/Ops approved → InnovationProject created
+'REJECTED'   -- Admin/Ops rejected → proposer can submit preferences
+```
+
+### Status Flow
+
+```
+SUBMITTED → APPROVED  (creates InnovationProject, proposer = lead)
+SUBMITTED → REJECTED  (proposer can now rank other projects)
+```
+
+---
+
+## Phase 4: Innovation Projects
+
+### DDL
+
+```sql
+CREATE TABLE innovation_projects (
+    id             BIGSERIAL PRIMARY KEY,
+    proposal_id    BIGINT NOT NULL UNIQUE REFERENCES proposals(id) ON DELETE CASCADE,
+    cycle_id       BIGINT NOT NULL REFERENCES application_cycles(id) ON DELETE CASCADE,
+    lead_id        BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title          VARCHAR(200) NOT NULL,
+    max_members    INTEGER NOT NULL DEFAULT 4,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | BIGSERIAL | PRIMARY KEY | Auto-incrementing. |
+| `proposal_id` | BIGINT | FK → proposals, NOT NULL, UNIQUE | One-to-one with the original proposal. |
+| `cycle_id` | BIGINT | FK → application_cycles, NOT NULL | The cycle this project belongs to. |
+| `lead_id` | BIGINT | FK → users, NOT NULL | The proposer who becomes team lead. |
+| `title` | VARCHAR(200) | NOT NULL | Project title (copied from proposal). |
+| `max_members` | INTEGER | NOT NULL, DEFAULT 4 | Maximum team size. |
+
+---
+
+## Phase 4: Innovation Preferences
+
+### DDL
+
+```sql
+CREATE TABLE innovation_preferences (
+    id             BIGSERIAL PRIMARY KEY,
+    user_id        BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    project_id     BIGINT NOT NULL REFERENCES innovation_projects(id) ON DELETE CASCADE,
+    cycle_id       BIGINT NOT NULL REFERENCES application_cycles(id) ON DELETE CASCADE,
+    rank           INTEGER NOT NULL CHECK (rank IN (1, 2, 3)),
+    submitted_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT unique_user_project_cycle UNIQUE(user_id, project_id, cycle_id),
+    CONSTRAINT unique_user_rank_cycle UNIQUE(user_id, rank, cycle_id),
+    CONSTRAINT rank_must_be_1_2_or_3 CHECK (rank IN (1, 2, 3))
+);
+```
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `user_id` | BIGINT | FK → users, NOT NULL | The student ranking. |
+| `project_id` | BIGINT | FK → innovation_projects, NOT NULL | The project being ranked. |
+| `cycle_id` | BIGINT | FK → application_cycles, NOT NULL | Which cycle. |
+| `rank` | INTEGER | NOT NULL, CHECK (1,2,3) | 1 = top choice, 2, 3. |
+
+### Three Constraints
+
+1. **UNIQUE(user, project, cycle)** — can't rank the same project twice
+2. **UNIQUE(user, rank, cycle)** — can't use the same rank number twice
+3. **CHECK(rank IN (1,2,3))** — rank must be 1, 2, or 3
 
 ---
 
@@ -325,51 +445,6 @@ token_blacklist_outstandingtoken       -- JWT outstanding tokens
 
 ---
 
-## Remaining Planned Schema (Phase 4)
-
-```sql
--- PHASE 4: INNOVATION TRACK
-
-CREATE TABLE proposals (
-    id             BIGSERIAL PRIMARY KEY,
-    cycle_id       BIGINT NOT NULL REFERENCES application_cycles(id) ON DELETE CASCADE,
-    proposer_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    title          VARCHAR(200) NOT NULL,
-    description    TEXT NOT NULL,
-    tech_stack     TEXT,
-    max_members    INTEGER NOT NULL DEFAULT 4,
-    status         VARCHAR(20) NOT NULL DEFAULT 'SUBMITTED',
-    submitted_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
--- status: SUBMITTED, APPROVED, REJECTED
-
-CREATE TABLE innovation_projects (
-    id             BIGSERIAL PRIMARY KEY,
-    proposal_id    BIGINT NOT NULL UNIQUE REFERENCES proposals(id) ON DELETE CASCADE,
-    cycle_id       BIGINT NOT NULL REFERENCES application_cycles(id) ON DELETE CASCADE,
-    lead_id        BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    title          VARCHAR(200) NOT NULL,
-    max_members    INTEGER NOT NULL DEFAULT 4,
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE innovation_preferences (
-    id             BIGSERIAL PRIMARY KEY,
-    user_id        BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    project_id     BIGINT NOT NULL REFERENCES innovation_projects(id) ON DELETE CASCADE,
-    cycle_id       BIGINT NOT NULL REFERENCES application_cycles(id) ON DELETE CASCADE,
-    rank           INTEGER NOT NULL CHECK (rank IN (1, 2, 3)),
-    submitted_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    UNIQUE(user_id, project_id, cycle_id),
-    UNIQUE(user_id, rank, cycle_id)
-);
-```
-
-Phase 4 will also convert `assignments.innovation_project_id_placeholder` into a proper FK to `innovation_projects` and add the CHECK constraint ensuring exactly one project type is set.
-
----
-
 ## Entity Relationship Diagram
 
 ```
@@ -377,9 +452,9 @@ users ──────────┬── 1:1 per cycle ──> general_inte
                 │
                 ├── 1:N ──> launch_applications
                 │
-                ├── 1:N ──> proposals              (Phase 4)
+                ├── 1:N ──> proposals
                 │
-                ├── 1:N (max 3) ──> innovation_preferences  (Phase 4)
+                ├── 1:N (max 3) ──> innovation_preferences
                 │
                 ├── 1:1 per cycle ──> assignments  ⭐ (core constraint)
                 │
@@ -390,6 +465,10 @@ application_cycles ──── 1:N ──> (all other tables reference cycle)
 launch_projects ──── 1:N ──> launch_applications ──── 1:1 ──> launch_candidates
 
 proposals ──── 1:1 ──> innovation_projects ──── 1:N ──> innovation_preferences
+
+assignments ──── FK ──> launch_projects (nullable, for Launch track)
+            ──── FK ──> innovation_projects (nullable, for Innovation track)
+            ──── XOR constraint: exactly one FK must be set
 ```
 
 ---
@@ -413,6 +492,6 @@ The original design used an 8-step linear state machine (SETUP → GI_OPEN → .
 - Admin/Ops can assign students anytime after receiving applications
 - The real workflow doesn't follow a strict linear progression
 
-### Why a Placeholder Integer Instead of FK for Innovation?
+### Why XOR Constraint on Assignments?
 
-The Assignment model references Innovation projects, but the Innovation app's models don't exist yet (Phase 4). Using a BigIntegerField placeholder avoids circular migration dependencies while keeping the data model forward-compatible. In Phase 4, this becomes a proper ForeignKey and the CHECK constraint is added.
+The `exactly_one_project_assigned` CHECK constraint ensures data integrity at the database level. Even if the Python service layer has a bug, PostgreSQL will reject any assignment that has both FKs set or neither FK set. This is the final safety net for the most critical table in the system.
