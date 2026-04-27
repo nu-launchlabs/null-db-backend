@@ -716,6 +716,7 @@ class LaunchService:
 
         # Update application
         app = candidate.application
+        applicant = candidate.application.user
         app.status = LaunchApplication.Status.NOT_SELECTED
         app.save(update_fields=["status", "updated_at"])
 
@@ -740,4 +741,24 @@ class LaunchService:
             ip_address=ip_address,
         )
 
-        return candidate    
+        try:
+            send_notification_email(
+                subject="Launch Project Application Update",
+                recipient_email=applicant.email,
+                plain_message=(
+                    f"Hi {applicant.first_name},\n\n"
+                    f"Thank you for your interest in project '{candidate.project.title}'. "
+                    f"After careful review, we regret to inform you that we will not be moving forward with your "
+                    f"application.\n\n"
+                    f"We hope that you will apply again next cycle!\n\n"
+                    f"— NU Launch Labs"
+                ),
+            )
+        except smtplib.SMTPException:
+            logger.error(
+                "Failed to send rejection email to %s for project '%s'",
+                applicant.email,
+                candidate.project.title,
+            )
+
+        return candidate
