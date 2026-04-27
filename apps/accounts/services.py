@@ -153,7 +153,7 @@ class AccountService:
                 plain_message=(
                     f"Hello {user.first_name},\n\n"
                     f"Your Launch Team account has been successfully created!\n\n"
-                    f"Your temporary password is: {password}\n\n"                                                                                                                         
+                    f"Your temporary password is: {password}\n\n"
                     f"Please log in and change it immediately.\n\n"
                     f"— NU Launch Labs"
                 )
