@@ -19,6 +19,7 @@ Rules:
 """
 
 import logging
+import smtplib
 
 from django.db import transaction
 from django.utils import timezone
@@ -26,6 +27,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.cycles.models import Assignment
 from apps.launch.models import LaunchApplication, LaunchCandidate, LaunchProject
+from apps.notifications.services import send_notification_email
 from utils.exceptions import (
     BusinessLogicError,
     ConflictError,
@@ -649,6 +651,24 @@ class LaunchService:
             },
             ip_address=ip_address,
         )
+
+        try:
+            send_notification_email(
+                subject="You've been accepted to a Launch Project!",
+                recipient_email=applicant.email,
+                plain_message=(
+                    f"Hi {applicant.first_name},\n\n"
+                    f"Congratulations! You've been selected for the Launch project "
+                    f'"{candidate.project.title}".\n\n'
+                    f"— NU Launch Labs"
+                ),
+            )
+        except smtplib.SMTPException:
+            logger.error(
+                "Failed to send acceptance email to %s for project '%s'",
+                applicant.email,
+                candidate.project.title,
+            )
 
         return candidate, assignment, warning
 
