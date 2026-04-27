@@ -19,6 +19,7 @@ Rules:
 """
 
 import logging
+import smtplib
 
 from django.db import transaction
 
@@ -26,6 +27,7 @@ from apps.accounts.models import User
 from apps.cycles.models import Assignment
 from apps.innovation.choices import ProposalStatus
 from apps.innovation.models import InnovationPreference, InnovationProject, Proposals
+from apps.notifications.services import send_notification_email
 from utils.exceptions import (
     BusinessLogicError,
     ConflictError,
@@ -228,6 +230,23 @@ class InnovationService:
             ip_address=ip_address,
         )
 
+        try:
+            send_notification_email(
+                subject=f"Proposal '{proposal.title}' approved!",
+                recipient_email=proposal.proposer.email,
+                plain_message=(
+                    f"Hello {proposal.proposer.first_name},\n\n"
+                    f"Congratulations! Your NU Launch Labs Innovation proposal has been approved.\n\n"
+                    f"— NU Launch Labs"
+                )
+            )
+        except smtplib.SMTPException:
+            logger.error(
+                "Unable to send approval email for proposal %d - %s",
+                proposal.id,
+                proposal.title
+            )
+
         return proposal, project
 
     @staticmethod
@@ -283,6 +302,25 @@ class InnovationService:
             },
             ip_address=ip_address,
         )
+
+        try:
+            send_notification_email(
+                subject=f"Your proposal '{proposal.title}' was not approved",
+                recipient_email=proposal.proposer.email,
+                plain_message=(
+                    f"Hi {proposal.proposer.first_name},\n\n"
+                    f"Thank you for submitting your proposal '{proposal.title}'. "
+                    f"After careful review, we were unable to approve it this cycle. "
+                    f"You are now eligible to submit preferences for other Innovation projects.\n\n"
+                    f"— NU Launch Labs"
+                ),
+            )
+        except smtplib.SMTPException:
+            logger.error(
+                "Failed to send rejection email for proposal %d to %s",
+                proposal.id,
+                proposal.proposer.email,
+            )
 
         return proposal
 
@@ -602,5 +640,23 @@ class InnovationService:
             },
             ip_address=ip_address,
         )
+
+        try:
+            send_notification_email(
+                subject="You've been assigned to an Innovation project!",
+                recipient_email=student.email,
+                plain_message=(
+                    f"Hi {student.first_name},\n\n"
+                    f"You've been assigned to the Innovation project '{project.title}' "
+                    f"for the {cycle.name} cycle.\n\n"
+                    f"— NU Launch Labs"
+                ),
+            )
+        except smtplib.SMTPException:
+            logger.error(
+                "Failed to send assignment email to %s for project '%s'",
+                student.email,
+                project.title,
+            )
 
         return assignment
