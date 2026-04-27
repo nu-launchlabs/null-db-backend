@@ -9,11 +9,13 @@ Rules:
 """
 
 import logging
+import smtplib
 
 from django.db import transaction
 
 from apps.accounts.models import GeneralInterest, User
 from apps.accounts.validators import is_neu_email, validate_neu_email
+from apps.notifications.services import send_notification_email
 from utils.exceptions import BusinessLogicError, ConflictError, ResourceNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -71,6 +73,23 @@ class AccountService:
             ip_address=ip_address,
         )
 
+        try:
+            send_notification_email(
+                subject="Launch Labs New User Registration",
+                recipient_email=email,
+                plain_message=(
+                    f"Hello {user.first_name},\n\n"
+                    f"Your Launch Labs account has been successfully registered! "
+                    f"Welcome to the team.\n\n"
+                    f"— NU Launch Labs"
+                )
+            )
+        except smtplib.SMTPException:
+            logger.error(
+                "Failed to send user account creation email to %s",
+                user.email
+            )
+
         return user
 
     # Launch Team Account Creation
@@ -126,6 +145,24 @@ class AccountService:
             },
             ip_address=ip_address,
         )
+
+        try:
+            send_notification_email(
+                subject="Launch Team Account Creation",
+                recipient_email=email,
+                plain_message=(
+                    f"Hello {user.first_name},\n\n"
+                    f"Your Launch Team account has been successfully created!\n\n"
+                    f"Your temporary password is: {password}\n\n"                                                                                                                         
+                    f"Please log in and change it immediately.\n\n"
+                    f"— NU Launch Labs"
+                )
+            )
+        except smtplib.SMTPException:
+            logger.error(
+                "Failed to send team account creation email to %s",
+                user.email
+            )
 
         return user
 
