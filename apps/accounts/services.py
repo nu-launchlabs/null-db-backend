@@ -15,6 +15,8 @@ from django.db import transaction
 
 from apps.accounts.models import GeneralInterest, User
 from apps.accounts.validators import is_neu_email, validate_neu_email
+from django.template.loader import render_to_string
+
 from apps.notifications.services import send_notification_email
 from utils.exceptions import BusinessLogicError, ConflictError, ResourceNotFoundError
 
@@ -73,6 +75,11 @@ class AccountService:
             ip_address=ip_address,
         )
 
+        html_message = render_to_string(
+            "notifications/registration.html",
+            {"first_name": user.first_name},
+        )
+
         try:
             send_notification_email(
                 subject="Launch Labs New User Registration",
@@ -82,7 +89,8 @@ class AccountService:
                     f"Your Launch Labs account has been successfully registered! "
                     f"Welcome to the team.\n\n"
                     f"— NU Launch Labs"
-                )
+                ),
+                html_message=html_message,
             )
         except smtplib.SMTPException:
             logger.error(
@@ -146,6 +154,11 @@ class AccountService:
             ip_address=ip_address,
         )
 
+        html_message = render_to_string(
+            "notifications/launch_team_account_created.html",
+            {"first_name": user.first_name, "password": password},
+        )
+
         try:
             send_notification_email(
                 subject="Launch Team Account Creation",
@@ -156,7 +169,8 @@ class AccountService:
                     f"Your temporary password is: {password}\n\n"
                     f"Please log in and change it immediately.\n\n"
                     f"— NU Launch Labs"
-                )
+                ),
+                html_message=html_message,
             )
         except smtplib.SMTPException:
             logger.error(
