@@ -22,6 +22,7 @@ import logging
 import smtplib
 
 from django.db import transaction
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -652,6 +653,14 @@ class LaunchService:
             ip_address=ip_address,
         )
 
+        html_message = render_to_string(
+            "notifications/launch_accepted.html",
+            {
+                "first_name": applicant.first_name,
+                "project_title": candidate.project.title,
+            }
+        )
+
         try:
             send_notification_email(
                 subject="You've been accepted to a Launch Project!",
@@ -662,6 +671,7 @@ class LaunchService:
                     f'"{candidate.project.title}".\n\n'
                     f"— NU Launch Labs"
                 ),
+                html_message=html_message,
             )
         except smtplib.SMTPException:
             logger.error(
@@ -741,6 +751,14 @@ class LaunchService:
             ip_address=ip_address,
         )
 
+        html_message = render_to_string(
+            "notifications/launch_rejected.html",
+            {
+                "first_name": applicant.first_name,
+                "project_title": candidate.project.title,
+            }
+        )
+
         try:
             send_notification_email(
                 subject="Launch Project Application Update",
@@ -753,6 +771,7 @@ class LaunchService:
                     f"We hope that you will apply again next cycle!\n\n"
                     f"— NU Launch Labs"
                 ),
+                html_message=html_message,
             )
         except smtplib.SMTPException:
             logger.error(
