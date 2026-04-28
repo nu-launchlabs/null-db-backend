@@ -27,6 +27,8 @@ from apps.accounts.models import User
 from apps.cycles.models import Assignment
 from apps.innovation.choices import ProposalStatus
 from apps.innovation.models import InnovationPreference, InnovationProject, Proposals
+from django.template.loader import render_to_string
+
 from apps.notifications.services import send_notification_email
 from utils.exceptions import (
     BusinessLogicError,
@@ -230,6 +232,14 @@ class InnovationService:
             ip_address=ip_address,
         )
 
+        html_message = render_to_string(
+            "notifications/proposal_approved.html",
+            {
+                "first_name": proposal.proposer.first_name,
+                "proposal_title": proposal.title,
+            },
+        )
+
         try:
             send_notification_email(
                 subject=f"Proposal '{proposal.title}' approved!",
@@ -238,7 +248,8 @@ class InnovationService:
                     f"Hello {proposal.proposer.first_name},\n\n"
                     f"Congratulations! Your NU Launch Labs Innovation proposal has been approved.\n\n"
                     f"— NU Launch Labs"
-                )
+                ),
+                html_message=html_message,
             )
         except smtplib.SMTPException:
             logger.error(
@@ -303,6 +314,14 @@ class InnovationService:
             ip_address=ip_address,
         )
 
+        html_message = render_to_string(
+            "notifications/proposal_rejected.html",
+            {
+                "first_name": proposal.proposer.first_name,
+                "proposal_title": proposal.title,
+            },
+        )
+
         try:
             send_notification_email(
                 subject=f"Your proposal '{proposal.title}' was not approved",
@@ -314,6 +333,7 @@ class InnovationService:
                     f"You are now eligible to submit preferences for other Innovation projects.\n\n"
                     f"— NU Launch Labs"
                 ),
+                html_message=html_message,
             )
         except smtplib.SMTPException:
             logger.error(
@@ -641,6 +661,15 @@ class InnovationService:
             ip_address=ip_address,
         )
 
+        html_message = render_to_string(
+            "notifications/innovation_assigned.html",
+            {
+                "first_name": student.first_name,
+                "project_title": project.title,
+                "cycle_name": cycle.name,
+            },
+        )
+
         try:
             send_notification_email(
                 subject="You've been assigned to an Innovation project!",
@@ -651,6 +680,7 @@ class InnovationService:
                     f"for the {cycle.name} cycle.\n\n"
                     f"— NU Launch Labs"
                 ),
+                html_message=html_message,
             )
         except smtplib.SMTPException:
             logger.error(
